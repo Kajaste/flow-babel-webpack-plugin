@@ -107,6 +107,20 @@ plugins: [
 ],
 ```
 
+##### stopStartedServer
+
+You can choose to keep the flow server started by this plugin running by setting this to `false`. Default is `true`.
+
+Note that pre-started flow servers are reused and never stopped by this plugin.
+
+For example:
+```js
+plugins: [
+  new FlowBabelWebpackPlugin({
+    stopStartedServer: false,
+  }),
+],
+```
 ---
 
 ### What's next?

@@ -1,4 +1,4 @@
-var spawnSync = require('child_process').spawnSync;
+var child_process = require('child_process');
 var flow = require('flow-bin');
 var merge = require('lodash.merge');
 
@@ -7,9 +7,11 @@ var store = {
   flowOptions: [
     'status',
     '--color=always',
+    '--quiet',
   ],
   options: {
     warn: false,
+    stopStartedServer: true,
 
     formatter: function (errorCode, errorDetails) {
       return 'Flow: ' + errorCode + '\n\n' + errorDetails;
@@ -74,17 +76,50 @@ function flowErrorCode(status) {
 }
 
 
-function checkFlowStatus(compiler, next) {
-  var res = spawnSync(flow, store.flowOptions);
-  var status = res.status;
+function isFlowServerRunning() {
+  var serverCheckOptions = [
+    'status',
+    '--no-auto-start',
+  ];
+  var res = child_process.spawnSync(flow, serverCheckOptions);
+  return res.status !== 6;
+}
 
-  if (status !== 0) {
-    var errorCode = flowErrorCode(status);
+
+function stopFlowServer() {
+  var serverStopOptions = [
+    'stop',
+  ];
+  child_process.spawn(flow, serverStopOptions);
+}
+
+
+function runFlow() {
+  var stopWhenDone = store.options.stopStartedServer && !isFlowServerRunning();
+
+  var res = child_process.spawnSync(flow, store.flowOptions);
+
+  if (stopWhenDone) {
+    stopFlowServer();
+  }
+
+  return res;
+}
+
+
+function storeError(res) {
+  if (res.status !== 0) {
+    var errorCode = flowErrorCode(res.status);
     var errorDetails = res.stdout.toString() + res.stderr.toString();
 
     store.error = new Error(store.options.formatter(errorCode, errorDetails));
   }
+}
 
+
+function checkFlowStatus(compiler, next) {
+  var res = runFlow();
+  storeError(res);
   next();
 }
 
